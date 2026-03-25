@@ -1,5 +1,8 @@
 node_modules/
 dist/
+coverage/
 *.js.map
 *.d.ts.map
-coverage/
+.env
+.DS_Store
+.claude/settings.local.json

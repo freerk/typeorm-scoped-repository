@@ -9,7 +9,9 @@ interface TestEntity {
   name: string;
 }
 
-function makeRepo(overrides: Partial<Repository<TestEntity>> = {}): Repository<TestEntity> {
+function makeRepo(
+  overrides: Partial<Repository<TestEntity>> = {},
+): Repository<TestEntity> {
   return {
     find: jest.fn().mockResolvedValue([]),
     findOne: jest.fn().mockResolvedValue(null),
@@ -46,7 +48,9 @@ describe('ScopedRepository — single scope', () => {
     const scoped = new ScopedRepository(repo, scope);
     await scoped.findOne({ where: { name: 'test' } as any });
     expect(repo.findOne).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { name: 'test', organisationId: 'org-123' } }),
+      expect.objectContaining({
+        where: { name: 'test', organisationId: 'org-123' },
+      }),
     );
   });
 
@@ -126,7 +130,11 @@ describe('ScopedRepository — composite scope (viking-ts pattern)', () => {
     await scoped.find({ where: { name: 'test' } as any });
     expect(repo.find).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { name: 'test', accountId: 'default', ownerSpace: '10f5d88f294c' },
+        where: {
+          name: 'test',
+          accountId: 'default',
+          ownerSpace: '10f5d88f294c',
+        },
       }),
     );
   });

@@ -12,7 +12,6 @@ import {
   Brackets,
   EntityManager,
   EntityTarget,
-  ObjectType,
 } from 'typeorm';
 
 /**
@@ -32,13 +31,6 @@ import {
 export type Scope = Record<string, string>;
 
 // TypeORM internal interfaces for safe type access
-interface QueryBuilderInternal {
-  orWhere?: (where: unknown, parameters?: unknown) => unknown;
-  andWhere: (where: unknown, parameters?: unknown) => unknown;
-  __scopeApplied?: boolean;
-  expressionMap?: { wheres: unknown[] };
-}
-
 interface RepositoryInternal {
   target?: unknown;
   metadata?: { target?: unknown; targetName?: string };
@@ -125,7 +117,11 @@ function createScopedQueryBuilder<T extends ObjectLiteral>(
     qb.constructor.name === 'UpdateQueryBuilder' ||
     qb.constructor.name === 'DeleteQueryBuilder';
 
-  const { condition, params } = buildScopeCondition(scope, alias, !isUpdateOrDelete);
+  const { condition, params } = buildScopeCondition(
+    scope,
+    alias,
+    !isUpdateOrDelete,
+  );
   qb.andWhere(condition, params);
 
   return applyFortressOverrides(qb);
@@ -225,7 +221,9 @@ export class ScopedRepository<T extends Record<string, any>> {
   }
 
   async delete(id: string): Promise<void> {
-    await this.repo.delete(this.mergeWhere({ id } as unknown as FindOptionsWhere<T>));
+    await this.repo.delete(
+      this.mergeWhere({ id } as unknown as FindOptionsWhere<T>),
+    );
   }
 
   async count(options: FindManyOptions<T> = {}): Promise<number> {
@@ -242,7 +240,11 @@ export class ScopedRepository<T extends Record<string, any>> {
    */
   createQueryBuilder(alias: string): SelectQueryBuilder<T> {
     const qb = this.repo.createQueryBuilder(alias);
-    return createScopedQueryBuilder(qb, alias, this.scope) as SelectQueryBuilder<T>;
+    return createScopedQueryBuilder(
+      qb,
+      alias,
+      this.scope,
+    ) as SelectQueryBuilder<T>;
   }
 
   /**
@@ -263,7 +265,7 @@ export class ScopedRepository<T extends Record<string, any>> {
     if (!target) {
       throw new Error(
         'Cannot determine entity target for transaction. ' +
-        'Pass the entity class as the second argument: withTransaction(manager, MyEntity)',
+          'Pass the entity class as the second argument: withTransaction(manager, MyEntity)',
       );
     }
     return new ScopedRepository(
@@ -282,7 +284,10 @@ export class ScopedRepository<T extends Record<string, any>> {
    * // agentRepo queries WHERE account_id = 'acme' AND owner_space = '10f5d88f294c'
    */
   withScope(additionalScope: Scope): ScopedRepository<T> {
-    return new ScopedRepository(this.repo, { ...this.scope, ...additionalScope });
+    return new ScopedRepository(this.repo, {
+      ...this.scope,
+      ...additionalScope,
+    });
   }
 
   // ─── Private helpers ──────────────────────────────────────────────────────
