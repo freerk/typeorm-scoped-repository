@@ -4,8 +4,29 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
 } from 'typeorm';
 import { ScopedRepository, Scope } from './scoped-repository';
+
+@Entity('test_batches')
+class TestBatchEntity {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  @Column({ name: 'organisation_id' })
+  organisationId!: string;
+
+  @Column({ nullable: true })
+  name!: string;
+
+  @Column({ nullable: true })
+  status!: string;
+
+  @OneToMany(() => TestItemEntity, (item) => item.batch)
+  items!: TestItemEntity[];
+}
 
 @Entity('test_items')
 class TestItemEntity {
@@ -23,6 +44,10 @@ class TestItemEntity {
 
   @Column({ name: 'batch_id', nullable: true })
   batchId!: string;
+
+  @ManyToOne(() => TestBatchEntity, (batch) => batch.items, { nullable: true })
+  @JoinColumn({ name: 'batch_id' })
+  batch!: TestBatchEntity;
 
   @Column({ name: 'created_at', nullable: true })
   createdAt!: Date;
@@ -58,7 +83,7 @@ describe('SQL Integration — single scope', () => {
     dataSource = new DataSource({
       type: 'better-sqlite3',
       database: ':memory:',
-      entities: [TestItemEntity],
+      entities: [TestItemEntity, TestBatchEntity],
       synchronize: true,
       logging: false,
     });
@@ -226,6 +251,113 @@ describe('SQL Integration — single scope', () => {
       expect(sql.split('WHERE')).toHaveLength(2);
     });
   });
+
+  describe('JOIN queries', () => {
+    it('scope applies only to main entity, not to joined table', () => {
+      const qb = scoped
+        .createQueryBuilder('item')
+        .leftJoinAndSelect('item.batch', 'batch');
+
+      const sql = qb.getSql();
+
+      // Scope on main entity
+      expect(sql).toMatch(/"?item"?\."?organisation_id"?\s*=\s*\?/);
+
+      // JOIN present
+      expect(sql).toMatch(/LEFT JOIN/i);
+      expect(sql).toMatch(/"?test_batches"?/);
+
+      // Scope should NOT appear on the joined table
+      expect(sql).not.toMatch(/"?batch"?\."?organisation_id"?\s*=\s*\?/);
+    });
+
+    it('leftJoin with additional WHERE on joined table works alongside scope', () => {
+      const qb = scoped
+        .createQueryBuilder('item')
+        .leftJoinAndSelect('item.batch', 'batch')
+        .andWhere('batch.status = :batchStatus', { batchStatus: 'open' });
+
+      const sql = qb.getSql();
+
+      // Scope on main entity
+      expect(sql).toMatch(/"?item"?\."?organisation_id"?\s*=\s*\?/);
+
+      // User condition on joined table
+      expect(sql).toMatch(/"?batch"?\."?status"?\s*=\s*\?/);
+
+      // Both conditions in same WHERE clause
+      expect(sql.split('WHERE')).toHaveLength(2);
+
+      const params = qb.getParameters();
+      expect(params.__scope_organisationId).toBe('org-123');
+      expect(params.batchStatus).toBe('open');
+    });
+
+    it('innerJoin works with scope', () => {
+      const qb = scoped
+        .createQueryBuilder('item')
+        .innerJoinAndSelect('item.batch', 'batch');
+
+      const sql = qb.getSql();
+
+      expect(sql).toMatch(/"?item"?\."?organisation_id"?\s*=\s*\?/);
+      expect(sql).toMatch(/INNER JOIN/i);
+    });
+
+    it('leftJoin with ON condition does not interfere with scope', () => {
+      const qb = scoped
+        .createQueryBuilder('item')
+        .leftJoin(
+          'test_batches',
+          'batch',
+          'batch.id = item.batch_id AND batch.status = :s',
+          { s: 'active' },
+        );
+
+      const sql = qb.getSql();
+
+      // Scope in WHERE
+      expect(sql).toMatch(/"?item"?\."?organisation_id"?\s*=\s*\?/);
+
+      // Custom ON condition separate from WHERE
+      expect(sql).toMatch(/LEFT JOIN/i);
+      expect(sql).toMatch(/"?batch"?\."?status"?\s*=\s*\?/);
+    });
+
+    it('.where() after JOIN is still converted to .andWhere() (fortress)', () => {
+      const qb = scoped
+        .createQueryBuilder('item')
+        .leftJoinAndSelect('item.batch', 'batch')
+        .where('batch.name = :name', { name: 'Q1' })
+        .andWhere('item.status = :status', { status: 'active' });
+
+      const sql = qb.getSql();
+
+      // Scope still present
+      expect(sql).toMatch(/"?item"?\."?organisation_id"?\s*=\s*\?/);
+
+      // Both user conditions present (WHERE was converted to AND, not replacing scope)
+      expect(sql).toMatch(/"?batch"?\."?name"?\s*=\s*\?/);
+      expect(sql).toMatch(/"?item"?\."?status"?\s*=\s*\?/);
+
+      // Single WHERE clause with all conditions ANDed
+      expect(sql.split('WHERE')).toHaveLength(2);
+    });
+
+    it('subquery join does not leak scope', () => {
+      const qb = scoped
+        .createQueryBuilder('item')
+        .leftJoinAndSelect('item.batch', 'batch')
+        .andWhere('item.batchId IS NOT NULL')
+        .addSelect('batch.name');
+
+      const sql = qb.getSql();
+
+      // Exactly one scope condition in the entire query
+      const scopeMatches = sql.match(/"?organisation_id"?\s*=\s*\?/g);
+      expect(scopeMatches).toHaveLength(1);
+    });
+  });
 });
 
 describe('SQL Integration — composite scope', () => {
@@ -242,7 +374,7 @@ describe('SQL Integration — composite scope', () => {
     dataSource = new DataSource({
       type: 'better-sqlite3',
       database: ':memory:',
-      entities: [TestItemEntity],
+      entities: [TestItemEntity, TestBatchEntity],
       synchronize: true,
       logging: false,
     });
