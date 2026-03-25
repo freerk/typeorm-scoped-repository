@@ -1,6 +1,6 @@
 {
   "name": "typeorm-scoped-repository",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeORM ScopedRepository with fortress pattern — automatic multi-scope isolation (organisation, user, agent, tenant) on every query. Framework-agnostic.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,7 +16,9 @@
   },
   "typesVersions": {
     "*": {
-      "nestjs": ["./dist/nestjs.d.ts"]
+      "nestjs": [
+        "./dist/nestjs.d.ts"
+      ]
     }
   },
   "files": [
