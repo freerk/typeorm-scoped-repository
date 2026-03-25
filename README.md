@@ -1,4 +1,4 @@
-# nestjs-scoped-repository
+# typeorm-scoped-repository
 
 TypeORM `ScopedRepository` with **fortress pattern** for NestJS — automatic multi-scope isolation on every query. No raw SQL, no forgotten WHERE clauses, no cross-tenant data leaks.
 
@@ -14,7 +14,7 @@ TypeORM `ScopedRepository` with **fortress pattern** for NestJS — automatic mu
 ## Install
 
 ```bash
-npm install nestjs-scoped-repository
+npm install typeorm-scoped-repository
 ```
 
 ## Usage
@@ -22,7 +22,7 @@ npm install nestjs-scoped-repository
 ### Single scope (organisation isolation)
 
 ```typescript
-import { ScopedRepository } from 'nestjs-scoped-repository';
+import { ScopedRepository } from 'typeorm-scoped-repository';
 
 @Injectable()
 export class WhisperService {

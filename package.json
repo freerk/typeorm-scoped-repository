@@ -1,10 +1,12 @@
 {
-  "name": "nestjs-scoped-repository",
+  "name": "typeorm-scoped-repository",
   "version": "0.1.0",
-  "description": "TypeORM ScopedRepository with fortress pattern for NestJS — automatic multi-scope isolation (organisation, user, agent, tenant) on every query",
+  "description": "TypeORM ScopedRepository with fortress pattern \u2014 automatic multi-scope isolation (organisation, user, agent, tenant) on every query. Framework-agnostic with optional NestJS helpers.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "jest",
@@ -37,6 +39,8 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "testMatch": ["**/*.spec.ts"]
+    "testMatch": [
+      "**/*.spec.ts"
+    ]
   }
 }
