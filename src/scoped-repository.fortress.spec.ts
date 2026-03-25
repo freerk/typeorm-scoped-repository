@@ -16,7 +16,7 @@ import { ScopedRepository, Scope } from './scoped-repository';
 interface TestEntity {
   id: string;
   organisationId?: string;
-  batchId?: string;
+  categoryId?: string;
   name: string;
   status?: string;
   createdAt?: Date;
@@ -87,7 +87,7 @@ describe('Fortress Pattern — OR clause attack vectors', () => {
   it('prevents OR clause bypass attempts', async () => {
     await scoped
       .createQueryBuilder('e')
-      .where('e.batchId IS NULL')
+      .where('e.categoryId IS NULL')
       .orWhere(`e.organisationId = '${MALICIOUS_ORG}'`)
       .getMany();
 
@@ -216,8 +216,10 @@ describe('Fortress Pattern — complex condition attack vectors', () => {
   it('handles EXISTS subquery bypass attempts', async () => {
     await scoped
       .createQueryBuilder('e')
-      .where('e.batchId IS NULL')
-      .where('EXISTS (SELECT 1 FROM batches WHERE batches.id = e.batchId)')
+      .where('e.categoryId IS NULL')
+      .where(
+        'EXISTS (SELECT 1 FROM categories WHERE categories.id = e.categoryId)',
+      )
       .getMany();
 
     expect(mockQb.andWhere).toHaveBeenCalledWith(
@@ -277,8 +279,8 @@ describe('Fortress Pattern — UPDATE/DELETE transition', () => {
     await scoped
       .createQueryBuilder('e')
       .update()
-      .set({ batchId: 'malicious-batch' })
-      .where('e.batchId IS NULL')
+      .set({ categoryId: 'malicious-category' })
+      .where('e.categoryId IS NULL')
       .orWhere(`e.organisationId = '${MALICIOUS_ORG}'`)
       .execute();
 
@@ -291,7 +293,7 @@ describe('Fortress Pattern — UPDATE/DELETE transition', () => {
     // WHERE->andWhere + OR->Brackets on the update builder
     expect(mockUpdateBuilder.andWhere).toHaveBeenCalledTimes(3);
     expect(mockUpdateBuilder.set).toHaveBeenCalledWith({
-      batchId: 'malicious-batch',
+      categoryId: 'malicious-category',
     });
   });
 
@@ -433,8 +435,8 @@ describe('Fortress Pattern — edge cases', () => {
       .select('e.id')
       .where('e.text IS NOT NULL')
       .andWhere('e.createdAt IS NOT NULL')
-      .orWhere('e.batchId IN (:...ids)', { ids: ['b1', 'b2'] })
-      .where('EXISTS (SELECT 1 FROM batches b WHERE b.id = e.batchId)')
+      .orWhere('e.categoryId IN (:...ids)', { ids: ['b1', 'b2'] })
+      .where('EXISTS (SELECT 1 FROM categories b WHERE b.id = e.categoryId)')
       .having('COUNT(e.id) > 0')
       .orderBy('e.createdAt', 'DESC')
       .limit(100)

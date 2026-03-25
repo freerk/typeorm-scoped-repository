@@ -10,8 +10,8 @@ import {
 } from 'typeorm';
 import { ScopedRepository, Scope } from './scoped-repository';
 
-@Entity('test_batches')
-class TestBatchEntity {
+@Entity('test_categories')
+class TestCategoryEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -24,7 +24,7 @@ class TestBatchEntity {
   @Column({ nullable: true })
   status!: string;
 
-  @OneToMany(() => TestItemEntity, (item) => item.batch)
+  @OneToMany(() => TestItemEntity, (item) => item.category)
   items!: TestItemEntity[];
 }
 
@@ -42,12 +42,12 @@ class TestItemEntity {
   @Column({ name: 'owner_space', nullable: true })
   ownerSpace!: string;
 
-  @Column({ name: 'batch_id', nullable: true })
-  batchId!: string;
+  @Column({ name: 'category_id', nullable: true })
+  categoryId!: string;
 
-  @ManyToOne(() => TestBatchEntity, (batch) => batch.items, { nullable: true })
-  @JoinColumn({ name: 'batch_id' })
-  batch!: TestBatchEntity;
+  @ManyToOne(() => TestCategoryEntity, (cat) => cat.items, { nullable: true })
+  @JoinColumn({ name: 'category_id' })
+  category!: TestCategoryEntity;
 
   @Column({ name: 'created_at', nullable: true })
   createdAt!: Date;
@@ -83,7 +83,7 @@ describe('SQL Integration — single scope', () => {
     dataSource = new DataSource({
       type: 'better-sqlite3',
       database: ':memory:',
-      entities: [TestItemEntity, TestBatchEntity],
+      entities: [TestItemEntity, TestCategoryEntity],
       synchronize: true,
       logging: false,
     });
@@ -100,11 +100,11 @@ describe('SQL Integration — single scope', () => {
     it('generates correct SQL with scope filter', () => {
       const qb = scoped
         .createQueryBuilder('item')
-        .andWhere('item.batchId IS NULL');
+        .andWhere('item.categoryId IS NULL');
 
       const sql = qb.getSql();
       expect(sql).toMatch(/"?item"?\."?organisation_id"?\s*=\s*\?/);
-      expect(sql).toMatch(/"?batch_id"?\s+IS\s+NULL/);
+      expect(sql).toMatch(/"?category_id"?\s+IS\s+NULL/);
 
       const params = qb.getParameters();
       expect(params.__scope_organisationId).toBe('org-123');
@@ -114,12 +114,12 @@ describe('SQL Integration — single scope', () => {
       const endDate = new Date('2024-01-01');
       const qb = scoped
         .createQueryBuilder('item')
-        .andWhere('item.batchId IS NULL')
+        .andWhere('item.categoryId IS NULL')
         .andWhere('item.createdAt <= :endDate', { endDate });
 
       const sql = qb.getSql();
       expect(sql).toMatch(/"?item"?\."?organisation_id"?\s*=\s*\?/);
-      expect(sql).toMatch(/"?batch_id"?\s+IS\s+NULL/);
+      expect(sql).toMatch(/"?category_id"?\s+IS\s+NULL/);
       expect(sql).toMatch(/"?item"?\."?created_at"?\s*<=\s*\?/);
     });
   });
@@ -129,8 +129,8 @@ describe('SQL Integration — single scope', () => {
       const qb = scoped
         .createQueryBuilder('item')
         .update(TestItemEntity)
-        .set({ batchId: 'batch-1' })
-        .andWhere('batchId IS NULL');
+        .set({ categoryId: 'cat-1' })
+        .andWhere('categoryId IS NULL');
 
       const sql = qb.getSql();
 
@@ -138,7 +138,7 @@ describe('SQL Integration — single scope', () => {
       const scopeMatches = sql.match(/"?organisation_id"?\s*=\s*\?/g);
       expect(scopeMatches).toHaveLength(1);
 
-      expect(sql).toMatch(/"?batch_id"?\s+IS\s+NULL/);
+      expect(sql).toMatch(/"?category_id"?\s+IS\s+NULL/);
       expect(sql).toMatch(/^UPDATE/);
       expect(sql).toContain('SET');
       expect(sql).toContain('WHERE');
@@ -148,8 +148,8 @@ describe('SQL Integration — single scope', () => {
       const qb = scoped
         .createQueryBuilder('item')
         .update(TestItemEntity)
-        .set({ batchId: 'batch-2' })
-        .where('batchId IS NULL');
+        .set({ categoryId: 'cat-2' })
+        .where('categoryId IS NULL');
 
       const sql = qb.getSql();
 
@@ -161,7 +161,7 @@ describe('SQL Integration — single scope', () => {
         /"?item"?\."?organisation_id"?.*"?organisation_id"?/,
       );
 
-      expect(sql).toMatch(/"?batch_id"?\s+IS\s+NULL/);
+      expect(sql).toMatch(/"?category_id"?\s+IS\s+NULL/);
     });
 
     it('handles UPDATE with date conditions', () => {
@@ -169,8 +169,8 @@ describe('SQL Integration — single scope', () => {
       const qb = scoped
         .createQueryBuilder('item')
         .update(TestItemEntity)
-        .set({ batchId: 'batch-3' })
-        .andWhere('batchId IS NULL')
+        .set({ categoryId: 'cat-3' })
+        .andWhere('categoryId IS NULL')
         .andWhere('createdAt <= :endDate', { endDate });
 
       const sql = qb.getSql();
@@ -178,7 +178,7 @@ describe('SQL Integration — single scope', () => {
       const scopeMatches = sql.match(/"?organisation_id"?\s*=\s*\?/g);
       expect(scopeMatches).toHaveLength(1);
 
-      expect(sql).toMatch(/"?batch_id"?\s+IS\s+NULL/);
+      expect(sql).toMatch(/"?category_id"?\s+IS\s+NULL/);
       expect(sql).toMatch(/"?created_at"?\s*<=\s*\?/);
     });
   });
@@ -242,7 +242,7 @@ describe('SQL Integration — single scope', () => {
     it('does not generate overly complex SQL', () => {
       const qb = scoped
         .createQueryBuilder('item')
-        .andWhere('item.batchId IS NULL')
+        .andWhere('item.categoryId IS NULL')
         .andWhere('item.status = :status', { status: 'active' });
 
       const sql = qb.getSql();
@@ -256,7 +256,7 @@ describe('SQL Integration — single scope', () => {
     it('scope applies only to main entity, not to joined table', () => {
       const qb = scoped
         .createQueryBuilder('item')
-        .leftJoinAndSelect('item.batch', 'batch');
+        .leftJoinAndSelect('item.category', 'cat');
 
       const sql = qb.getSql();
 
@@ -265,17 +265,17 @@ describe('SQL Integration — single scope', () => {
 
       // JOIN present
       expect(sql).toMatch(/LEFT JOIN/i);
-      expect(sql).toMatch(/"?test_batches"?/);
+      expect(sql).toMatch(/"?test_categories"?/);
 
       // Scope should NOT appear on the joined table
-      expect(sql).not.toMatch(/"?batch"?\."?organisation_id"?\s*=\s*\?/);
+      expect(sql).not.toMatch(/"?cat"?\."?organisation_id"?\s*=\s*\?/);
     });
 
     it('leftJoin with additional WHERE on joined table works alongside scope', () => {
       const qb = scoped
         .createQueryBuilder('item')
-        .leftJoinAndSelect('item.batch', 'batch')
-        .andWhere('batch.status = :batchStatus', { batchStatus: 'open' });
+        .leftJoinAndSelect('item.category', 'cat')
+        .andWhere('cat.status = :catStatus', { catStatus: 'open' });
 
       const sql = qb.getSql();
 
@@ -283,20 +283,20 @@ describe('SQL Integration — single scope', () => {
       expect(sql).toMatch(/"?item"?\."?organisation_id"?\s*=\s*\?/);
 
       // User condition on joined table
-      expect(sql).toMatch(/"?batch"?\."?status"?\s*=\s*\?/);
+      expect(sql).toMatch(/"?cat"?\."?status"?\s*=\s*\?/);
 
       // Both conditions in same WHERE clause
       expect(sql.split('WHERE')).toHaveLength(2);
 
       const params = qb.getParameters();
       expect(params.__scope_organisationId).toBe('org-123');
-      expect(params.batchStatus).toBe('open');
+      expect(params.catStatus).toBe('open');
     });
 
     it('innerJoin works with scope', () => {
       const qb = scoped
         .createQueryBuilder('item')
-        .innerJoinAndSelect('item.batch', 'batch');
+        .innerJoinAndSelect('item.category', 'cat');
 
       const sql = qb.getSql();
 
@@ -308,9 +308,9 @@ describe('SQL Integration — single scope', () => {
       const qb = scoped
         .createQueryBuilder('item')
         .leftJoin(
-          'test_batches',
-          'batch',
-          'batch.id = item.batch_id AND batch.status = :s',
+          'test_categories',
+          'cat',
+          'cat.id = item.category_id AND cat.status = :s',
           { s: 'active' },
         );
 
@@ -321,14 +321,14 @@ describe('SQL Integration — single scope', () => {
 
       // Custom ON condition separate from WHERE
       expect(sql).toMatch(/LEFT JOIN/i);
-      expect(sql).toMatch(/"?batch"?\."?status"?\s*=\s*\?/);
+      expect(sql).toMatch(/"?cat"?\."?status"?\s*=\s*\?/);
     });
 
     it('.where() after JOIN is still converted to .andWhere() (fortress)', () => {
       const qb = scoped
         .createQueryBuilder('item')
-        .leftJoinAndSelect('item.batch', 'batch')
-        .where('batch.name = :name', { name: 'Q1' })
+        .leftJoinAndSelect('item.category', 'cat')
+        .where('cat.name = :catName', { catName: 'Q1' })
         .andWhere('item.status = :status', { status: 'active' });
 
       const sql = qb.getSql();
@@ -337,7 +337,7 @@ describe('SQL Integration — single scope', () => {
       expect(sql).toMatch(/"?item"?\."?organisation_id"?\s*=\s*\?/);
 
       // Both user conditions present (WHERE was converted to AND, not replacing scope)
-      expect(sql).toMatch(/"?batch"?\."?name"?\s*=\s*\?/);
+      expect(sql).toMatch(/"?cat"?\."?name"?\s*=\s*\?/);
       expect(sql).toMatch(/"?item"?\."?status"?\s*=\s*\?/);
 
       // Single WHERE clause with all conditions ANDed
@@ -347,9 +347,9 @@ describe('SQL Integration — single scope', () => {
     it('subquery join does not leak scope', () => {
       const qb = scoped
         .createQueryBuilder('item')
-        .leftJoinAndSelect('item.batch', 'batch')
-        .andWhere('item.batchId IS NOT NULL')
-        .addSelect('batch.name');
+        .leftJoinAndSelect('item.category', 'cat')
+        .andWhere('item.categoryId IS NOT NULL')
+        .addSelect('cat.name');
 
       const sql = qb.getSql();
 
@@ -374,7 +374,7 @@ describe('SQL Integration — composite scope', () => {
     dataSource = new DataSource({
       type: 'better-sqlite3',
       database: ':memory:',
-      entities: [TestItemEntity, TestBatchEntity],
+      entities: [TestItemEntity, TestCategoryEntity],
       synchronize: true,
       logging: false,
     });
@@ -400,7 +400,7 @@ describe('SQL Integration — composite scope', () => {
       .createQueryBuilder('item')
       .update(TestItemEntity)
       .set({ status: 'updated' })
-      .where('batchId IS NULL');
+      .where('categoryId IS NULL');
 
     const sql = qb.getSql();
 

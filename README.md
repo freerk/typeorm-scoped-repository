@@ -25,10 +25,10 @@ npm install typeorm-scoped-repository
 import { ScopedRepository } from 'typeorm-scoped-repository';
 
 @Injectable()
-export class WhisperService {
+export class ArticleService {
   constructor(
-    @InjectRepository(WhisperEntity)
-    private readonly _repo: Repository<WhisperEntity>,
+    @InjectRepository(ArticleEntity)
+    private readonly _repo: Repository<ArticleEntity>,
   ) {}
 
   private repo(organisationId: string) {
@@ -37,17 +37,17 @@ export class WhisperService {
 
   async findAll(organisationId: string) {
     return this.repo(organisationId).find();
-    // Executes: SELECT * FROM whispers WHERE organisation_id = $1
+    // Executes: SELECT * FROM articles WHERE organisation_id = $1
   }
 
-  async create(organisationId: string, data: Partial<WhisperEntity>) {
-    return this.repo(organisationId).save(data as WhisperEntity);
+  async create(organisationId: string, data: Partial<ArticleEntity>) {
+    return this.repo(organisationId).save(data as ArticleEntity);
     // Always stamps organisationId — cannot forget it
   }
 }
 ```
 
-### Composite scope (viking-ts pattern: user + agent)
+### Composite scope (multi-field isolation)
 
 ```typescript
 const agentSpace = md5(`${userId}:${agentId}`).slice(0, 12);
@@ -122,7 +122,7 @@ await dataSource.transaction(async (manager) => {
 
 ## Motivation
 
-This package was extracted from [whisperline-api](https://github.com/Whisperline/whisperline-api), a production NestJS application with strict organisation-level data isolation. The pattern proved robust enough to generalise for any multi-scope use case.
+This pattern was extracted from a production NestJS application with strict organisation-level data isolation. It proved robust enough to generalise for any multi-scope use case.
 
 ## License
 

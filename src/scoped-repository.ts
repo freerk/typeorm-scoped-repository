@@ -22,7 +22,7 @@ import {
  * // Single-scope (organisation isolation)
  * const scope: Scope = { organisationId: 'org-123' };
  *
- * // Composite scope (user + agent isolation, e.g. for viking-ts)
+ * // Composite scope (multi-field isolation)
  * const scope: Scope = { accountId: 'default', ownerSpace: '10f5d88f294c' };
  *
  * // Triple scope (full multi-tenant)
@@ -188,23 +188,15 @@ function createScopedQueryBuilder<T extends ObjectLiteral>(
  * brackets to prevent filter bypass.
  *
  * @example
- * // Organisation-scoped (single scope)
- * const repo = new ScopedRepository(whisperRepo, { organisationId: 'org-123' });
- * const whispers = await repo.find(); // WHERE organisation_id = 'org-123'
+ * // Single scope (organisation isolation)
+ * const repo = new ScopedRepository(articleRepo, { organisationId: 'org-123' });
+ * const articles = await repo.find(); // WHERE organisation_id = 'org-123'
  *
  * @example
- * // Agent-scoped (composite scope, e.g. viking-ts)
- * const repo = new ScopedRepository(contextVectorRepo, {
+ * // Composite scope (multi-field isolation)
+ * const repo = new ScopedRepository(documentRepo, {
  *   accountId: 'default',
- *   ownerSpace: '10f5d88f294c',  // md5(`${userId}:${agentId}`).slice(0,12)
- * });
- *
- * @example
- * // Full multi-tenant composite scope
- * const repo = new ScopedRepository(contextVectorRepo, {
- *   accountId: 'acme-corp',
- *   userId: 'alice',
- *   ownerSpace: 'a3f9c2b1e8d4',
+ *   workspaceId: 'ws-42',
  * });
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

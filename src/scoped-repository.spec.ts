@@ -119,7 +119,7 @@ describe('ScopedRepository — single scope', () => {
   });
 });
 
-describe('ScopedRepository — composite scope (viking-ts pattern)', () => {
+describe('ScopedRepository — composite scope', () => {
   const scope: Scope = {
     accountId: 'default',
     ownerSpace: '10f5d88f294c',
