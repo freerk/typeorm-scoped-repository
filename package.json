@@ -41,6 +41,10 @@
   ],
   "author": "Freerk Kalsbeek",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/freerk/typeorm-scoped-repository"
+  },
   "peerDependencies": {
     "typeorm": ">=0.3.0",
     "@nestjs/common": ">=10.0.0",
