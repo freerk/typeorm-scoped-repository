@@ -20,6 +20,7 @@ function makeRepo(
     update: jest.fn().mockResolvedValue({ affected: 1 }),
     delete: jest.fn().mockResolvedValue({ affected: 1 }),
     count: jest.fn().mockResolvedValue(0),
+    increment: jest.fn().mockResolvedValue({ affected: 1 }),
     createQueryBuilder: jest.fn().mockReturnValue({
       __scopeApplied: false,
       andWhere: jest.fn().mockReturnThis(),
@@ -89,6 +90,17 @@ describe('ScopedRepository — single scope', () => {
     await scoped.delete('1');
     expect(repo.delete).toHaveBeenCalledWith(
       expect.objectContaining({ id: '1', organisationId: 'org-123' }),
+    );
+  });
+
+  it('injects scope into increment()', async () => {
+    const repo = makeRepo();
+    const scoped = new ScopedRepository(repo, scope);
+    await scoped.increment({ status: 'active' } as any, 'viewCount', 1);
+    expect(repo.increment).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'active', organisationId: 'org-123' }),
+      'viewCount',
+      1,
     );
   });
 

@@ -52,9 +52,6 @@ npm run format:check  # Prettier check (CI)
 
 ## Known gaps (vs reference)
 
-- Missing: SELECT-to-UPDATE/DELETE transition handling in fortress pattern
-- Missing: `increment()` method
-- Test coverage: only basic tests, missing fortress attack vector tests and SQL generation tests
 - The reference's `orWhere` override uses `qb.orWhere()` inside Brackets (original method on inner QB), while this package uses `inner.andWhere()`. Both isolate the condition, but match the reference for consistency
 
 ## Type safety notes

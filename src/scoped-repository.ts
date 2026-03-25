@@ -102,6 +102,7 @@ function buildScopeCondition(
  * 1. Scope fields are always injected via .andWhere() — cannot be removed
  * 2. Subsequent .where() calls are converted to .andWhere() to prevent bypass
  * 3. OR conditions are wrapped in Brackets to prevent scope filter bypass
+ * 4. SELECT-to-UPDATE/DELETE transitions clear accumulated WHEREs and re-apply scope
  */
 function createScopedQueryBuilder<T extends ObjectLiteral>(
   qb: QueryBuilderWithWhere<T>,
@@ -124,7 +125,57 @@ function createScopedQueryBuilder<T extends ObjectLiteral>(
   );
   qb.andWhere(condition, params);
 
-  return applyFortressOverrides(qb);
+  applyFortressOverrides(qb);
+
+  // Override .update() on SelectQueryBuilder to handle SELECT-to-UPDATE transition.
+  // When transitioning, accumulated WHERE conditions from the SELECT phase must be
+  // cleared and scope re-applied in UPDATE format (no alias prefix).
+  if ('update' in qbAny && !isUpdateOrDelete) {
+    const originalUpdate = qbAny.update.bind(qb);
+
+    qbAny.update = function (entityTarget?: unknown) {
+      const updateBuilder = originalUpdate(entityTarget);
+
+      // Clear accumulated WHEREs from the SELECT phase to prevent duplication
+      try {
+        if (updateBuilder.expressionMap) {
+          updateBuilder.expressionMap.wheres = [];
+        }
+      } catch {
+        // If clearing fails, continue — duplicate filter is less harmful than missing filter
+      }
+
+      // Re-apply scope in UPDATE format (no alias prefix, snake_case columns)
+      const updateScope = buildScopeCondition(scope, alias, false);
+      updateBuilder.andWhere(updateScope.condition, updateScope.params);
+
+      return applyFortressOverrides(updateBuilder);
+    };
+  }
+
+  // Override .delete() on SelectQueryBuilder to handle SELECT-to-DELETE transition.
+  if ('delete' in qbAny && !isUpdateOrDelete) {
+    const originalDelete = qbAny.delete.bind(qb);
+
+    qbAny.delete = function () {
+      const deleteBuilder = originalDelete();
+
+      try {
+        if (deleteBuilder.expressionMap) {
+          deleteBuilder.expressionMap.wheres = [];
+        }
+      } catch {
+        // Same rationale as above
+      }
+
+      const deleteScope = buildScopeCondition(scope, alias, false);
+      deleteBuilder.andWhere(deleteScope.condition, deleteScope.params);
+
+      return applyFortressOverrides(deleteBuilder);
+    };
+  }
+
+  return qb;
 }
 
 /**
@@ -223,6 +274,18 @@ export class ScopedRepository<T extends Record<string, any>> {
   async delete(id: string): Promise<void> {
     await this.repo.delete(
       this.mergeWhere({ id } as unknown as FindOptionsWhere<T>),
+    );
+  }
+
+  async increment(
+    conditions: FindOptionsWhere<T>,
+    propertyPath: string,
+    value: number | string,
+  ): Promise<void> {
+    await this.repo.increment(
+      this.mergeWhere(conditions) as FindOptionsWhere<T>,
+      propertyPath,
+      value,
     );
   }
 

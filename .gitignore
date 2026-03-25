@@ -5,4 +5,4 @@ coverage/
 *.d.ts.map
 .env
 .DS_Store
-.claude/settings.local.json
+.claude/
