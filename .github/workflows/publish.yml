@@ -6,7 +6,6 @@ on:
       - 'v*'
 
 permissions:
-  id-token: write # Required for OIDC
   contents: read
 
 jobs:
@@ -25,6 +24,11 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
 
+      # Add npm authentication for publishing with a granular access token
+      - name: Set up npm auth token
+        run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: npm ci
       - run: npm run build
       - run: npm test
